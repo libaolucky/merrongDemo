@@ -1,0 +1,37 @@
+server:
+  port: 9900
+spring:
+  devtools:
+    restart:
+      enabled: true
+      additional-paths: src/main/java
+      exclude: WEB-INF/**
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: root
+    password: 1231828
+    url: jdbc:mysql://localhost:3306/meirong?useUnicode=true&characterEncoding=utf-8&allowMultiQueries=true&useSSL=false&serverTimezone=GMT%2b8
+    type: com.alibaba.druid.pool.DruidDataSource
+  jpa:
+    generate-ddl: false
+    hibernate:
+      ddl-auto: none
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 20MB
+
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
+
+  # 热部署
+  #开启热部署
+  #spring.devtools.restart.enabled=true
+  #重启目录
+  #spring.devtools.restart.additional-paths=src/main/java
+  #spring.devtools.restart.exclude=WEB-INF/**
+
+
+
+
+  # 本项目是一个   SpringBoot + vue +mybatis 的一个 脚手架，集成了 权限系统（不是shiro的， 是自已手写的），代码生成器，图片上传   登录，注册 功能！

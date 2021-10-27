@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>美容产品组管理</title>
+    <link rel="stylesheet" href="../../css/element.css">
+    <link rel="stylesheet" href="../../css/base.css">
+</head>
+<body>
+<div id="wrapper" v-cloak>
+    <el-container>
+        <el-aside :width="isCollapse ? '64px' : '200px'" style="background-color: black; transition:width .5s">
+            <div style="background-color: black; height: 60px; line-height: 60px; text-align: center;
+                color: white; font-size: 20px;">
+                <transition name="el-fade-in-linear">
+                    <span name="fade" v-show="!isCollapse"><a href="/page/end/index.html">后台</a></span>
+                </transition>
+            </div>
+            <el-menu :default-openeds="['1']" style="border: none;" background-color="black" text-color="#fff"
+                     active-text-color="#ffd04b"
+                     default-active="itemGroup"
+                     class="el-menu-vertical-demo" :collapse="isCollapse">
+                <a href="/page/end/index.html">
+                    <el-menu-item index="home">
+                        <i class="el-icon-data-line"></i>
+                        <span slot="title">首页</span>
+                    </el-menu-item>
+                </a>
+                <el-submenu index="1" v-if="user.permission && user.permission.length > 0">
+                    <template slot="title">
+                        <i class="el-icon-menu"></i>
+                        <span slot="title">信息管理</span>
+                    </template>
+                    <a :href="item.path" v-for="item in user.permission" :key="item.id">
+                        <el-menu-item :index="item.flag">
+                            <i class="el-icon-s-data"></i>
+                            <span slot="title">{{item.name}}</span>
+                        </el-menu-item>
+                    </a>
+                </el-submenu>
+            </el-menu>
+        </el-aside>
+        <el-container>
+            <el-header style="background-color: black; line-height: 60px; color: white;">
+                <el-row>
+                    <el-col :span="1">
+                        <i style="font-size: 22px; cursor: pointer"
+                           :class="[isCollapse ? 'el-icon-s-unfold' : 'el-icon-s-fold']" @click="handleCollapse"></i>
+                    </el-col>
+                    <el-col :span="2" :offset="21" style="text-align: right">
+                        <span style="color: white; margin-right: 10px">{{user.username}}</span>
+                        <el-dropdown>
+                            <img src="/files/avatar"
+                                 style="width: 40px; height: 40px; margin-right: 10px; border-radius: 50%">
+                            <el-dropdown-menu slot="dropdown">
+                                <a href="/page/end/person.html"
+                                   style="display:inline-block; padding: 5px 0; width: 100px; text-align: center; color: black">个人信息</a>
+                                <a @click="logout" href="#"
+                                   style="display:block; width: 100px;  text-align: center; color: black">退出</a>
+                            </el-dropdown-menu>
+                        </el-dropdown>
+                    </el-col>
+                </el-row>
+            </el-header>
+            <!-- 主体区域 -->
+            <el-main>
+                <div style="color: black; font-size: 20px; margin: 10px 0">美容产品组管理</div>
+                <div style="height: 1px; background-color: white"></div>
+                <el-input v-model="search" style="width: 20%;" suffix-icon="el-icon-search" placeholder="请输入名称按回车搜索"
+                          @keyup.enter.native="loadTable"></el-input>
+                <el-button @click="add" type="primary" size="mini" style="margin: 10px 0">新增</el-button>
+                <!-- <el-button @click="exp" type="primary" size="mini" style="margin: 10px 0">导出</el-button> -->
+                <el-table
+                        :data="tableData"
+                        border
+                        style="width: 100%">
+                    <el-table-column
+                            :prop="item.prop"
+                            :label="item.label"
+                            v-for="item in props"
+                    >
+                    </el-table-column>
+                    <el-table-column
+                            fixed="right"
+                            label="操作"
+                            width="100">
+                        <template slot-scope="scope">
+                            <el-button @click="edit(scope.row)" type="text">编辑</el-button>
+                            <el-popconfirm
+                                    @onConfirm="del(scope.row.id)"
+                                    title="确定删除？"
+                            >
+                                <el-button type="text" slot="reference">删除</el-button>
+                            </el-popconfirm>
+                        </template>
+                    </el-table-column>
+                </el-table>
+                <!-- 分页 -->
+                <div style="background-color: white">
+                    <el-pagination
+                            @size-change="handleSizeChange"
+                            @current-change="handleCurrentChange"
+                            :current-page="pageNum"
+                            :page-sizes="[5, 10, 20, 40]"
+                            :page-size="pageSize"
+                            layout="total, sizes, prev, pager, next, jumper"
+                            :total="total">
+                    </el-pagination>
+                </div>
+                <!--sync  vue的修饰符， 会触发事件的诞生-->
+                <el-dialog title="美容产品组信息" :visible.sync="dialogFormVisible" width="30%"
+                           close-on-click-modal="false" close-on-press-escape="false" show-close="false">
+                    <!--<el-form :model="entity">-->
+                        <!--<el-form-item v-if="item.prop !== 'id'" :label="item.label" label-width="100px" v-for="item in props">-->
+                            <!--<el-input v-model="entity[item.prop]" autocomplete="off" style="width: 80%"></el-input>-->
+                        <!--</el-form-item>-->
+                    <!--</el-form>-->
+                        <el-tabs v-model="activeName" type="card" @tab-click="handleClick">
+                            <el-tab-pane label="用户管理" name="first">
+                                <el-form ref="form" :model="entity" label-width="80px">
+                                    <el-form-item label="编码">
+                                        <el-input v-model="entity.code"></el-input>
+                                    </el-form-item>
+                                    <el-form-item label="名称">
+                                        <el-input v-model="entity.name"></el-input>
+                                    </el-form-item>
+                                    <el-form-item label="适用性别">
+                                        <el-select v-model="entity.sex" placeholder="请选择您的性别">
+                                            <el-option label="男" value="1"></el-option>
+                                            <el-option label="女" value="0"></el-option>
+                                        </el-select>
+                                    </el-form-item>
+
+                                    <el-form-item label="说明">
+                                        <el-input type="textarea" v-model="entity.remark"></el-input>
+                                    </el-form-item>
+                                    <el-form-item label="注意事项">
+                                        <el-input type="textarea" v-model="entity.attention"></el-input>
+                                    </el-form-item>
+                                </el-form>
+
+
+                            </el-tab-pane>
+                            <el-tab-pane label="单体项目列表" name="second">
+                                <div style="height: 500px;overflow-y: scroll">
+                                <el-table
+                                        @selection-change="handleSelectionChange"
+                                        ref="multipleTable"
+                                        :data="itemSelectAll"
+                                        stripe
+                                        style="width: 100%">
+                                    <el-table-column
+                                            type="selection"
+                                            width="55">
+                                    </el-table-column>
+                                    <el-table-column
+                                            prop="code"
+                                            label="项目编码"
+                                            width="180">
+                                    </el-table-column>
+                                    <el-table-column
+                                            prop="name"
+                                            label="项目名称">
+                                    </el-table-column>
+                                    <el-table-column
+                                            prop="remark"
+                                            label="项目说明">
+                                    </el-table-column>
+                                </el-table>
+                                </div>
+
+                            </el-tab-pane>
+                        </el-tabs>
+
+                    <div slot="footer" class="dialog-footer">
+                        <el-button @click="dialogFormVisible = false">取 消</el-button>
+                        <el-button type="primary" @click="groupSave">确 定</el-button>
+                    </div>
+                </el-dialog>
+
+            </el-main>
+        </el-container>
+    </el-container>
+</div>
+
+<script src="../../js/jquery.min.js"></script>
+<script src="../../js/vue.min.js"></script>
+<script src="../../js/element.js"></script>
+<script src="../../js/tinymce/tinymce.min.js"></script>
+<script src="../../js/base.js"></script>
+<script src="../../js/axios-0.18.0.js"></script>
+
+<script>
+
+    let urlBase = "/api/itemGroup/";
+    new Vue({
+        el: "#wrapper",
+        data: {
+            itemIds:[],
+            activeName: 'first',
+            user: {},
+            itemSelectAll:[],   // item 的全查
+            tableData: [],   // itemGroup 的全查
+            pageNum: 1,
+            pageSize: 10,
+            total: 0,
+            dialogFormVisible: false,
+            entity: {},
+            isCollapse: false,
+            search: '',
+            props: [{"label":"注意事项","prop":"attention"},{"label":"组代码","prop":"code"},{"label":"组编号","prop":"id"},{"label":"组名称","prop":"name"},{"label":"说明","prop":"remark"},{"label":"性别","prop":"sex"}]
+
+        },
+        created() {
+            this.user = sessionStorage.getItem("user") ? JSON.parse(sessionStorage.getItem("user")) : {};
+            this.loadTable();
+            // 调用 item的全查
+            this.loadItemSelectAllTable();
+
+
+        },
+        methods: {
+            // 获取选中状态的值
+            handleSelectionChange(val) {
+                // 对数组 进行一个清空
+                // js 如何对数组 清空呢？  有三种方法
+                this.itemIds.splice(0,this.itemIds.length)
+
+                console.log(val)
+                //解析遍历val, 因为 val 是数组 对象
+                for (var i=0;i<val.length;i++){
+                    this.itemIds.push(val[i].id)
+                }
+            },
+
+            groupSave(){
+                //alert("获取 tab标签1 和tab2中的数据，发送 post的axios到后台。。。")
+                // tab1  的数据  如何获取？？？
+                console.log(this.entity)
+                // tab2 的数据
+                console.log(this.itemIds.id)
+                // axios 如何 携带2个参数    url里面写一个，body(方法体)上写一个
+                axios.post("/api/itemGroup/additemAndGroup?itemIds="+this.itemIds,this.entity
+                ).then(res=>{
+                    console.log(res)
+                    if(res.data.code==0){
+                    this.$message({
+                        message: "添加成功",
+                        type: "success"
+                    });
+                    this.dialogFormVisible=false;   // 取消弹窗
+                    this.itemIds.splice(0,this.itemIds.length);  // 清空数组
+                    // 取消选择
+                    this.$refs.multipleTable.clearSelection();
+
+                    }else{
+                    this.$message.error("添加失败");
+                    this.dialogFormVisible=false;
+                    // 取消选择
+                    this.$refs.multipleTable.clearSelection();
+                    this.itemIds.splice(0,this.itemIds.length);  // 清空数组
+                }
+
+                })
+
+            },
+            handleClick(tab, event) {
+                console.log(tab, event);
+            },
+            handleCollapse() {
+                this.isCollapse = !this.isCollapse;
+            },
+            logout() {
+                $.get("/api/user/logout");
+                sessionStorage.removeItem("user");
+                location.href = "/page/end/login.html";
+            },
+            loadTable() {
+                $.get(urlBase + "/page?pageNum=" + this.pageNum + "&pageSize=" + this.pageSize + "&name=" + this.search).then(res => {
+                    this.tableData = res.data.records;
+                    this.total = res.data.total;
+                })
+            },
+            loadItemSelectAllTable(){
+              // 调用 axios ，访问  xxx的网址， 将数据 渲染到 表格当中
+                axios.get("/api/item").then(res=>{
+                    console.log(res)
+                    this.itemSelectAll=res.data.data
+                });
+            },
+
+            exp() {
+                window.open(urlBase + "/export");
+            },
+            handleSizeChange(pageSize) {
+                this.pageSize = pageSize;
+                this.loadTable();
+            },
+            handleCurrentChange(pageNum) {
+                this.pageNum = pageNum;
+                this.loadTable();
+            },
+            add() {
+                this.entity = {};
+                this.dialogFormVisible = true;
+            },
+            save() {
+                let type = this.entity.id ? "PUT" : "POST";
+                $.ajax({
+                    url: urlBase,
+                    type: type,
+                    contentType: "application/json",
+                    data: JSON.stringify(this.entity)
+                }).then(res => {
+                    if (res.code === '0') {
+                        this.$message({
+                            message: "保存成功",
+                            type: "success"
+                        });
+                        this.loadTable();
+                    } else {
+                        this.$message({
+                            message: res.msg,
+                            type: "error"
+                        })
+                    }
+                    this.dialogFormVisible = false;
+                })
+            },
+            edit(obj) {
+                this.entity = obj;
+                this.dialogFormVisible = true;
+            },
+            del(id) {
+                $.ajax({
+                    url: urlBase + id,
+                    type: "delete"
+                }).then(res => {
+                    if (res.code === '0') {
+                        this.$message({
+                            message: "删除成功",
+                            type: "success"
+                        })
+                        this.loadTable();
+                    } else {
+                        this.$message({
+                            message: res.msg,
+                            type: "error"
+                        })
+                    }
+                })
+            }
+        }
+    })
+</script>
+</body>
+</html>
